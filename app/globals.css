@@ -1,0 +1,280 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-jasmine-100 text-ink font-sans antialiased;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display tracking-tight;
+  }
+  ::selection {
+    @apply bg-marigold-400/40;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-medium
+           transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-palm-600;
+  }
+  .btn-primary {
+    @apply btn bg-palm-800 text-jasmine-50 hover:bg-palm-700 shadow-soft hover:-translate-y-0.5;
+  }
+  .btn-accent {
+    @apply btn bg-marigold-500 text-palm-900 hover:bg-marigold-400 shadow-soft hover:-translate-y-0.5;
+  }
+  .btn-ghost {
+    @apply btn border border-palm-800/15 bg-transparent text-palm-800 hover:bg-palm-800/5;
+  }
+  .field {
+    @apply w-full rounded-xl border border-palm-800/15 bg-white px-4 py-3 text-sm text-ink
+           placeholder:text-ink/40 transition focus:border-palm-600 focus:outline-none
+           focus:ring-2 focus:ring-palm-600/20;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-palm-800/80;
+  }
+  .card {
+    @apply rounded-2xl border border-palm-800/10 bg-white shadow-card;
+  }
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.2em] text-marigold-600;
+  }
+}
+
+/* ── Centered popup notifications ────────────────────────── */
+
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(10, 24, 10, 0.50);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: popup-bg-in 0.2s ease both;
+}
+
+.popup-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 368px;
+  padding: 44px 36px 36px;
+  background: #ffffff;
+  border-radius: 28px;
+  text-align: center;
+  box-shadow:
+    0 40px 100px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
+  animation: popup-card-in 0.32s cubic-bezier(0.34, 1.45, 0.64, 1) both;
+}
+
+.popup-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  margin-bottom: 6px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+}
+
+.popup-title {
+  font-family: 'Marcellus', serif;
+  font-size: 23px;
+  font-weight: 400;
+  color: #0a2c26;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.popup-msg {
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(18, 35, 31, 0.62);
+  margin: 0 0 6px;
+}
+
+.popup-btn {
+  width: 100%;
+  padding: 14px 24px;
+  margin-top: 6px;
+  border: none;
+  border-radius: 9999px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.popup-btn:active {
+  transform: scale(0.96);
+}
+
+@keyframes popup-bg-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes popup-card-in {
+  from { opacity: 0; transform: scale(0.80) translateY(28px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+/* ── Full-screen global loader ────────────────────────────── */
+
+/* Overlay: dark frosted-glass backdrop, delayed 150 ms so fast calls never flash */
+.loader-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 24, 10, 0.62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: loader-overlay-in 0.28s ease 0.15s both;
+}
+
+@keyframes loader-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Glass card */
+.loader-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding: 44px 52px 40px;
+  border-radius: 28px;
+  background: rgba(255, 252, 240, 0.07);
+  border: 1px solid rgba(255, 252, 240, 0.13);
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(216, 155, 58, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  animation: loader-card-in 0.38s cubic-bezier(0.34, 1.4, 0.64, 1) 0.15s both;
+}
+
+@keyframes loader-card-in {
+  from { opacity: 0; transform: scale(0.88) translateY(16px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+/* Brand block */
+.loader-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.loader-brand-rb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(140deg, rgb(107 142 72), rgb(55 85 35));
+  font-family: 'Marcellus', serif;
+  font-size: 20px;
+  color: rgba(252, 244, 216, 0.95);
+  letter-spacing: 0.04em;
+  box-shadow: 0 6px 20px rgba(107, 142, 72, 0.45), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+.loader-brand-name {
+  font-family: 'Marcellus', serif;
+  font-size: 15px;
+  color: rgba(252, 244, 216, 0.75);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* Concentric spinner rings */
+.loader-rings {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+.loader-ring-outer {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid rgba(216, 155, 58, 0.18);
+  border-top-color: rgb(216 155 58);
+  animation: loader-spin 0.9s linear infinite;
+}
+
+.loader-ring-inner {
+  position: absolute;
+  inset: 10px;
+  border-radius: 50%;
+  border: 2px solid rgba(107, 142, 72, 0.2);
+  border-bottom-color: rgb(107 142 72);
+  animation: loader-spin 0.7s linear infinite reverse;
+}
+
+.loader-ring-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: rgb(216 155 58);
+  animation: loader-dot-pulse 1.4s ease-in-out infinite;
+  box-shadow: 0 0 10px rgba(216, 155, 58, 0.6);
+}
+
+@keyframes loader-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes loader-dot-pulse {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%       { transform: scale(0.6); opacity: 0.5; }
+}
+
+/* Label */
+.loader-label {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: rgba(252, 244, 216, 0.55);
+  text-transform: uppercase;
+}
+
+/* ── Reduced motion respect ───────────────────────────────── */
+/* Reduced motion respect */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
