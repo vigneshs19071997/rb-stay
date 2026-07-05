@@ -24,11 +24,11 @@ export default function Navbar() {
       ? [{ href: "/admin", label: "Admin dashboard" }]
       : user
       ? [
-          { href: "/login", label: "Book a stay" },
+          { href: "/book", label: "Book a stay" },
           { href: "/my-bookings", label: "My bookings" },
           { href: "/profile", label: "My profile" },
         ]
-      : [{ href: "/login", label: "Book a stay" }];
+      : [{ href: "/book", label: "Book a stay" }];
 
   return (
     <header className="sticky top-0 z-40 border-b border-palm-800/10 bg-jasmine-100/90 backdrop-blur">

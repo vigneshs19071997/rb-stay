@@ -29,7 +29,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // Customer areas require any signed-in user.
-  if (pathname.startsWith("/book") || pathname.startsWith("/my-bookings") || pathname.startsWith("/profile")) {
+  if (pathname.startsWith("/my-bookings") || pathname.startsWith("/profile")) {
     if (!session) {
       const url = new URL("/login", req.url);
       url.searchParams.set("next", pathname);
@@ -41,5 +41,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/book/:path*", "/my-bookings/:path*"],
+  matcher: ["/admin/:path*", "/my-bookings/:path*"],
 };

@@ -80,8 +80,8 @@ export async function POST(req: NextRequest) {
     const checkOut = String(body.checkOut || "");
     const roomType = String(body.roomType || "");
 
-    // Field validation
-    if (!homeId || !guestName || !district || !state || !phone || !numMembers || !checkIn || !checkOut) {
+    // Field validation (district and state are optional)
+    if (!homeId || !guestName || !phone || !numMembers || !checkIn || !checkOut) {
       return NextResponse.json({ error: "Please fill in all required fields." }, { status: 400 });
     }
     if (!/^[6-9]\d{9}$/.test(phone)) {

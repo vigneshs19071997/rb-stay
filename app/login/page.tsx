@@ -51,7 +51,7 @@ function LoginForm() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not sign in.");
       setUser(data.user);
-      toast.success(`Welcome back, ${data.user.name.split(" ")[0]}.`);
+      // toast.success(`Welcome back, ${data.user.name.split(" ")[0]}.`);
       const next = params.get("next");
       router.push(next || (data.user.role === "admin" ? "/admin" : "/book"));
     } catch (err: any) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar } from "@/components/Calendar";
 import { ImageSlideshow } from "@/components/ImageSlideshow";
@@ -10,8 +10,6 @@ import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/components/Toast";
 import { diffDays, nightsInRange, prettyDate } from "@/lib/utils";
 import { ROOM_TYPES, type RoomTypeId } from "@/lib/constants";
-import { INDIA_STATES, getDistricts } from "@/lib/india-districts";
-
 
 interface Home {
   id: number;
@@ -21,6 +19,7 @@ interface Home {
 }
 
 const MAX_GUESTS = 5;
+const DRAFT_KEY = "rb_booking_draft";
 
 function inr(n: number) {
   return "₹" + n.toLocaleString("en-IN");
@@ -41,8 +40,6 @@ export default function BookPage() {
 
   const [form, setForm] = useState({
     guestName: "",
-    district: "",
-    state: "Tamil Nadu",
     phone: "",
     numMembers: 2,
     roomType: "non_ac_non_ac" as RoomTypeId,
@@ -57,6 +54,26 @@ export default function BookPage() {
     roomTypeLabel: string;
     totalPrice: number;
   }>(null);
+
+  // Ref used to restore draft dates after availability reloads on login return.
+  const draftDatesRef = useRef<{ start: string; end: string } | null>(null);
+
+  // Restore booking draft saved before redirecting to login.
+  const [draftRestored, setDraftRestored] = useState(false);
+  useEffect(() => {
+    if (!user || draftRestored) return;
+    setDraftRestored(true);
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      sessionStorage.removeItem(DRAFT_KEY);
+      if (d.homeIds?.length) setHomeIds(d.homeIds);
+      if (d.start && d.end) draftDatesRef.current = { start: d.start, end: d.end };
+      if (d.numMembers) setForm((f) => ({ ...f, numMembers: d.numMembers }));
+      if (d.roomType) setForm((f) => ({ ...f, roomType: d.roomType }));
+    } catch {}
+  }, [user, draftRestored]);
 
   // Prefill name from account.
   useEffect(() => {
@@ -75,29 +92,25 @@ export default function BookPage() {
   }, [user]);
 
   // Load homes once and default-select the first.
+  // Use functional update so a draft-restored homeIds is not overwritten.
   useEffect(() => {
     fetch("/api/homes")
       .then((r) => r.json())
       .then((d) => {
         const list: Home[] = d.homes || [];
         setHomes(list);
-        if (list.length) setHomeIds([list[0].id]);
+        setHomeIds((prev) => (prev.length ? prev : list.length ? [list[0].id] : []));
       })
       .catch(() => toast.error("Could not load homes."));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Toggle a home on/off; must keep at least 1 selected.
+  // Clicking a home selects ONLY that home (radio behavior).
   function toggleHome(id: number) {
-    setHomeIds((prev) => {
-      if (prev.includes(id)) {
-        if (prev.length === 1) return prev; // don't deselect the last one
-        return prev.filter((h) => h !== id);
-      }
-      return [...prev, id];
-    });
+    setHomeIds([id]);
   }
 
   // Load availability for all selected homes — disabled = union of booked nights.
+  // After loading, restore draft dates if they were saved before a login redirect.
   const loadAvailability = useCallback(
     async (ids: number[]) => {
       if (!ids.length) return;
@@ -114,6 +127,13 @@ export default function BookPage() {
           }
         }
         setDisabled(set);
+        // Restore draft dates saved before the login redirect.
+        const draft = draftDatesRef.current;
+        if (draft) {
+          draftDatesRef.current = null;
+          setStart(draft.start);
+          setEnd(draft.end);
+        }
       } catch {
         toast.error("Could not load availability.");
       } finally {
@@ -127,9 +147,16 @@ export default function BookPage() {
     if (homeIds.length) loadAvailability(homeIds);
   }, [homeIds, loadAvailability]);
 
+  // Cap numMembers when the number of selected homes decreases.
+  useEffect(() => {
+    const max = MAX_GUESTS * homeIds.length;
+    if (form.numMembers > max) setForm((f) => ({ ...f, numMembers: max }));
+  }, [homeIds.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const maxGuests = MAX_GUESTS * homeIds.length;
   const numDays = start && end ? diffDays(start, end) : 0;
   const selectedRoomType = ROOM_TYPES.find((r) => r.id === form.roomType)!;
-  const pricePerNight = selectedRoomType.price * homeIds.length; // per home × homes
+  const pricePerNight = selectedRoomType.price * homeIds.length;
   const totalPrice = numDays > 0 ? pricePerNight * numDays : 0;
   const selectedHomeNames = homes.filter((h) => homeIds.includes(h.id)).map((h) => h.name);
 
@@ -138,7 +165,24 @@ export default function BookPage() {
       toast.error("Please select a home and your stay dates.");
       return;
     }
-    if (!form.guestName || !form.district || !form.state || !form.phone) {
+
+    // Not logged in — save draft and redirect to login.
+    if (!user) {
+      sessionStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({
+          homeIds,
+          start,
+          end,
+          numMembers: form.numMembers,
+          roomType: form.roomType,
+        })
+      );
+      router.push("/login?next=/book");
+      return;
+    }
+
+    if (!form.guestName || !form.phone) {
       toast.error("Please fill in all your details.");
       return;
     }
@@ -160,10 +204,8 @@ export default function BookPage() {
           body: JSON.stringify({
             homeId: id,
             guestName: form.guestName,
-            district: form.district,
-            state: form.state,
             phone: form.phone,
-            numMembers: form.numMembers,
+            numMembers: Math.ceil(form.numMembers / homeIds.length),
             checkIn,
             checkOut,
             roomType: form.roomType,
@@ -176,6 +218,7 @@ export default function BookPage() {
         }
         results.push(data.booking);
       }
+      sessionStorage.removeItem(DRAFT_KEY);
       setConfirmed({
         homeNames: results.map((r) => r.homeName),
         checkIn,
@@ -214,10 +257,14 @@ export default function BookPage() {
               <h2 className="text-lg text-palm-900">Select a home</h2>
               {homes.length > 1 && (
                 <button
-                  onClick={() => setHomeIds(homes.map((h) => h.id))}
+                  onClick={() =>
+                    homeIds.length === homes.length
+                      ? setHomeIds([homes[0].id])
+                      : setHomeIds(homes.map((h) => h.id))
+                  }
                   className="text-xs font-medium text-marigold-600 hover:text-marigold-500 transition"
                 >
-                  Select both homes
+                  {homeIds.length === homes.length ? "Unselect both homes" : "Select both homes"}
                 </button>
               )}
             </div>
@@ -363,69 +410,56 @@ export default function BookPage() {
 
         {/* Right column */}
         <div className="space-y-6">
+
+          {/* Number of guests — always visible so user can set this before login */}
           <div className="card p-6">
-            <h2 className="text-lg text-palm-900">Your details</h2>
-            <div className="mt-4 space-y-4">
-              <div>
-                <label className="label" htmlFor="guestName">Full name</label>
-                <input
-                  id="guestName"
-                  readOnly
-                  className="field cursor-not-allowed bg-jasmine-200 opacity-70"
-                  value={form.guestName}
-                />
-              </div>
-              <div>
-                <label className="label" htmlFor="phone">Mobile number</label>
-                <input
-                  id="phone"
-                  readOnly
-                  className="field cursor-not-allowed bg-jasmine-200 opacity-70"
-                  value={form.phone}
-                />
-                <p className="mt-1 text-xs text-ink/45">Fetched from your profile.</p>
-              </div>
-              <div>
-                <label className="label" htmlFor="state">State</label>
-                <select
-                  id="state"
-                  className="field"
-                  value={form.state}
-                  onChange={(e) => setForm({ ...form, state: e.target.value, district: "" })}
-                >
-                  <option value="">Select a state</option>
-                  {INDIA_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="label" htmlFor="district">District</label>
-                <select
-                  id="district"
-                  className="field"
-                  value={form.district}
-                  disabled={!form.state}
-                  onChange={(e) => setForm({ ...form, district: e.target.value })}
-                >
-                  <option value="">{!form.state ? "Select a state first" : "Select a district"}</option>
-                  {getDistricts(form.state).map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="label" htmlFor="members">Number of guests</label>
-                <select id="members" className="field" value={form.numMembers}
-                  onChange={(e) => setForm({ ...form, numMembers: Number(e.target.value) })}>
-                  {Array.from({ length: MAX_GUESTS }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>{n} {n === 1 ? "guest" : "guests"}</option>
-                  ))}
-                </select>
-                <p className="mt-1.5 text-xs text-ink/50">
-                  {homeIds.length > 1
-                    ? `Up to ${MAX_GUESTS} guests per home (${MAX_GUESTS * homeIds.length} total).`
-                    : `Each home hosts a maximum of ${MAX_GUESTS} guests.`}
-                </p>
-              </div>
+            <h2 className="text-lg text-palm-900">Number of guests</h2>
+            <div className="mt-4">
+              <select
+                id="members"
+                className="field"
+                value={form.numMembers}
+                onChange={(e) => setForm({ ...form, numMembers: Number(e.target.value) })}
+              >
+                {Array.from({ length: maxGuests }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>{n} {n === 1 ? "guest" : "guests"}</option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-xs text-ink/50">
+                {homeIds.length > 1
+                  ? `Up to ${MAX_GUESTS} guests per home (${MAX_GUESTS * homeIds.length} total).`
+                  : `Each home hosts a maximum of ${MAX_GUESTS} guests.`}
+              </p>
             </div>
           </div>
+
+          {/* Your details — only shown after login, pre-filled from profile */}
+          {user && (
+            <div className="card p-6">
+              <h2 className="text-lg text-palm-900">Your details</h2>
+              <div className="mt-4 space-y-4">
+                <div>
+                  <label className="label" htmlFor="guestName">Full name</label>
+                  <input
+                    id="guestName"
+                    readOnly
+                    className="field cursor-not-allowed bg-jasmine-200 opacity-70"
+                    value={form.guestName}
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="phone">Mobile number</label>
+                  <input
+                    id="phone"
+                    readOnly
+                    className="field cursor-not-allowed bg-jasmine-200 opacity-70"
+                    value={form.phone}
+                  />
+                  <p className="mt-1 text-xs text-ink/45">Fetched from your profile.</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Summary */}
           <div className="card overflow-hidden">
@@ -454,9 +488,24 @@ export default function BookPage() {
               </span>
             </div>
             <div className="px-6 pb-6">
-              <button onClick={submit} disabled={submitting || !start || !end} className="btn-accent w-full">
-                {submitting ? <><Spinner /> Confirming…</> : `Confirm booking`}
+              <button
+                onClick={submit}
+                disabled={submitting || !start || !end}
+                className="btn-accent w-full"
+              >
+                {submitting ? (
+                  <><Spinner /> Confirming…</>
+                ) : !user ? (
+                  "Sign in to confirm booking"
+                ) : (
+                  "Confirm booking"
+                )}
               </button>
+              {!user && (
+                <p className="mt-2 text-center text-xs text-ink/50">
+                  Your selection will be saved while you sign in.
+                </p>
+              )}
             </div>
           </div>
         </div>

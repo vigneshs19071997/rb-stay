@@ -84,7 +84,7 @@ export default function HomePage() {
                     </div>
                   ))}
                 </div>
-                <Link href="/login" className="btn-primary mt-5 w-full">Book your dates</Link>
+                <Link href="/book" className="btn-primary mt-5 w-full">Book your dates</Link>
               </div>
             </div>
           </div>
@@ -143,9 +143,9 @@ export default function HomePage() {
         <h2 className="mt-3 text-3xl text-palm-900 md:text-4xl">Reserve in three easy steps</h2>
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           {[
-            { n: "01", t: "Create your account", d: "Sign up with your name, mobile number and email so we can confirm your stay." },
-            { n: "02", t: "Pick your dates", d: "Choose a home and select available dates on the calendar — booked dates are blocked automatically." },
-            { n: "03", t: "Confirm your details", d: "Tell us how many guests and days, and your booking is confirmed instantly." },
+            { n: "01", t: "Check availability", d: "Browse available dates and homes without signing up — booked dates are blocked automatically." },
+            { n: "02", t: "Pick your home and dates", d: "Select one or both homes, choose your room type and number of guests, then pick your stay dates." },
+            { n: "03", t: "Sign in and confirm", d: "Sign in or create a free account, and your booking is confirmed instantly." },
           ].map((s) => (
             <div key={s.n} className="card p-6">
               <span className="font-display text-3xl text-marigold-500">{s.n}</span>
@@ -209,6 +209,9 @@ export default function HomePage() {
               W5RP+4CF, MGC Nagar, Postal Nagar, Alamelumangapuram, Sathuvachari, Vellore,
               Tamil Nadu 632009
             </p>
+            <p className="mt-3 text-sm leading-relaxed text-ink/70">
+              🛕 Very close to <span className="font-medium text-palm-900">Arulmigu Thirthagiri Murugan Temple</span>, Vellore — ideal for devotees and pilgrims visiting the temple.
+            </p>
             <div className="mt-6 flex flex-col gap-2 text-sm">
               <a href="tel:+919092189883" className="font-medium text-palm-800 hover:text-palm-900">📞 +91 90921 89883</a>
               <a
@@ -220,7 +223,7 @@ export default function HomePage() {
                 📍 Open in Google Maps →
               </a>
             </div>
-            <Link href="/login" className="btn-primary mt-8">Book a stay</Link>
+            <Link href="/book" className="btn-primary mt-8">Book a stay</Link>
           </div>
           <div className="overflow-hidden rounded-2xl border border-palm-800/10 shadow-card">
             <iframe

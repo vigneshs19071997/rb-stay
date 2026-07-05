@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Calendar } from "@/components/Calendar";
 import { Modal } from "@/components/Modal";
 import { Spinner } from "@/components/Spinner";
 import { useToast } from "@/components/Toast";
-import { prettyDate, toISODate, todayMidnight } from "@/lib/utils";
+import { nightsInRange, prettyDate, toISODate, todayMidnight } from "@/lib/utils";
 import { getRoomType } from "@/lib/constants";
 
 function inr(n: number) {
@@ -30,7 +31,7 @@ interface Booking {
 }
 
 type Filter = "all" | "upcoming" | "confirmed" | "cancelled";
-type AdminView = "bookings" | "photos";
+type AdminView = "bookings" | "calendar" | "photos";
 
 const HOMES = [
   { id: 1, label: "Home 1" },
@@ -81,12 +82,22 @@ export default function AdminPage() {
   }, [bookings, today]);
 
   const filtered = useMemo(() => {
+    let base: Booking[];
     switch (filter) {
-      case "confirmed": return bookings.filter((b) => b.status === "confirmed");
-      case "cancelled": return bookings.filter((b) => b.status === "cancelled");
-      case "upcoming": return bookings.filter((b) => b.status === "confirmed" && b.checkOut >= today);
-      default: return bookings;
+      case "confirmed": base = bookings.filter((b) => b.status === "confirmed"); break;
+      case "cancelled": base = bookings.filter((b) => b.status === "cancelled"); break;
+      case "upcoming": base = bookings.filter((b) => b.status === "confirmed" && b.checkOut >= today); break;
+      default: base = bookings;
     }
+    // Upcoming confirmed → ascending (nearest first); past/cancelled → descending (most recent first)
+    return [...base].sort((a, b) => {
+      const aUp = a.status === "confirmed" && a.checkIn >= today;
+      const bUp = b.status === "confirmed" && b.checkIn >= today;
+      if (aUp !== bUp) return aUp ? -1 : 1;
+      return aUp
+        ? a.checkIn.localeCompare(b.checkIn)
+        : b.checkIn.localeCompare(a.checkIn);
+    });
   }, [bookings, filter, today]);
 
   async function cancel() {
@@ -102,12 +113,43 @@ export default function AdminPage() {
       toast.success("Booking cancelled.");
       setCancelTarget(null);
       loadBookings();
+      loadCalendar();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
       setWorking(false);
     }
   }
+
+  // ── Calendar ──────────────────────────────────────────────────────────────
+  const [calDisabled, setCalDisabled] = useState<{ h1: Set<string>; h2: Set<string> }>({
+    h1: new Set(),
+    h2: new Set(),
+  });
+  const [calLoading, setCalLoading] = useState(false);
+
+  const loadCalendar = useCallback(async () => {
+    setCalLoading(true);
+    try {
+      const [r1, r2] = await Promise.all([
+        fetch("/api/availability?homeId=1", { cache: "no-store" }).then((r) => r.json()),
+        fetch("/api/availability?homeId=2", { cache: "no-store" }).then((r) => r.json()),
+      ]);
+      const h1 = new Set<string>();
+      const h2 = new Set<string>();
+      for (const r of r1.ranges || []) for (const n of nightsInRange(r.checkIn, r.checkOut)) h1.add(n);
+      for (const r of r2.ranges || []) for (const n of nightsInRange(r.checkIn, r.checkOut)) h2.add(n);
+      setCalDisabled({ h1, h2 });
+    } catch {
+      toast.error("Could not load calendar.");
+    } finally {
+      setCalLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (view === "calendar") loadCalendar();
+  }, [view, loadCalendar]);
 
   function openEdit(b: Booking) {
     setEditTarget(b);
@@ -132,6 +174,7 @@ export default function AdminPage() {
       toast.success("Stay dates updated.");
       setEditTarget(null);
       loadBookings();
+      loadCalendar();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -227,7 +270,7 @@ export default function AdminPage() {
 
       {/* Tab bar */}
       <div className="mt-6 flex gap-1 rounded-2xl border border-palm-800/10 bg-white p-1 shadow-card w-fit">
-        {(["bookings", "photos"] as AdminView[]).map((v) => (
+        {(["bookings", "calendar", "photos"] as AdminView[]).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -415,6 +458,41 @@ export default function AdminPage() {
             )}
           </Modal>
         </>
+      )}
+
+      {/* ── Calendar view ── */}
+      {view === "calendar" && (
+        <div className="mt-8">
+          <p className="text-sm text-ink/55 mb-6">
+            Booked dates are shown with a strikethrough. Use this to quickly see which homes are free.
+          </p>
+          {calLoading ? (
+            <div className="flex h-64 items-center justify-center">
+              <Spinner className="h-7 w-7 text-palm-700" />
+            </div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="card p-6">
+                <h2 className="text-lg text-palm-900 mb-5">Home 1</h2>
+                <Calendar
+                  disabled={calDisabled.h1}
+                  start={null}
+                  end={null}
+                  onChange={() => {}}
+                />
+              </div>
+              <div className="card p-6">
+                <h2 className="text-lg text-palm-900 mb-5">Home 2</h2>
+                <Calendar
+                  disabled={calDisabled.h2}
+                  start={null}
+                  end={null}
+                  onChange={() => {}}
+                />
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* ── Photos view ── */}

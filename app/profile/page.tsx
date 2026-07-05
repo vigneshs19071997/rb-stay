@@ -45,7 +45,7 @@ export default function ProfilePage() {
       const res = await fetch("/api/auth/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name, phone: profile?.phone ?? "" }),
+        body: JSON.stringify({ name: form.name }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not save.");
@@ -69,7 +69,6 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name,
-          phone: profile?.phone ?? "",
           currentPassword: pwForm.currentPassword,
           newPassword: pwForm.newPassword,
         }),
