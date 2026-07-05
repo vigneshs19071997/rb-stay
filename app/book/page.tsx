@@ -41,7 +41,7 @@ export default function BookPage() {
   const [form, setForm] = useState({
     guestName: "",
     phone: "",
-    numMembers: 2,
+    numMembers: 0,
     roomType: "non_ac_non_ac" as RoomTypeId,
   });
   const [submitting, setSubmitting] = useState(false);
@@ -163,6 +163,10 @@ export default function BookPage() {
   async function submit() {
     if (!homeIds.length || !start || !end) {
       toast.error("Please select a home and your stay dates.");
+      return;
+    }
+    if (form.numMembers === 0) {
+      toast.error("Please select the number of guests.");
       return;
     }
 
@@ -417,10 +421,11 @@ export default function BookPage() {
             <div className="mt-4">
               <select
                 id="members"
-                className="field"
+                className="field !pl-2"
                 value={form.numMembers}
                 onChange={(e) => setForm({ ...form, numMembers: Number(e.target.value) })}
               >
+                <option value={0} disabled>Select number of guests</option>
                 {Array.from({ length: maxGuests }, (_, i) => i + 1).map((n) => (
                   <option key={n} value={n}>{n} {n === 1 ? "guest" : "guests"}</option>
                 ))}
@@ -479,7 +484,7 @@ export default function BookPage() {
                 label={homeIds.length > 1 ? `Per night (${homeIds.length} homes)` : "Per night"}
                 value={numDays > 0 ? inr(pricePerNight) : "—"}
               />
-              <Row label="Guests" value={`${form.numMembers}`} />
+              <Row label="Guests" value={form.numMembers > 0 ? `${form.numMembers}` : "—"} />
             </div>
             <div className="mx-6 mb-4 rounded-xl bg-jasmine-100 px-4 py-3 flex items-center justify-between">
               <span className="text-sm font-semibold text-palm-900">Total amount</span>
@@ -490,7 +495,7 @@ export default function BookPage() {
             <div className="px-6 pb-6">
               <button
                 onClick={submit}
-                disabled={submitting || !start || !end}
+                disabled={submitting || !start || !end || form.numMembers === 0}
                 className="btn-accent w-full"
               >
                 {submitting ? (
